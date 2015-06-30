@@ -326,8 +326,6 @@ include $(srctree)/scripts/Kbuild.include
 
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
-CC		= $(CROSS_COMPILE)gcc
-CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
 STRIP		= $(CROSS_COMPILE)strip
@@ -349,6 +347,92 @@ CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
+# begin The SaberMod Project additions
+
+# Copyright (C) 2015 The SaberMod Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Handle kernel CC flags by importing vendor/sm strings
+ifdef SM_KERNEL_NAME
+  USE_GCC = $(CROSS_COMPILE_NAME)gcc-$(SM_KERNEL_NAME)
+  CC = $(USE_GCC)
+else
+  CC = $(CROSS_COMPILE)gcc
+endif
+
+# Highest level of basic gcc optimizations if enabled
+ifeq ($(strip $(LOCAL_O3)),true)
+  SABERMOD_KERNEL_FLAGS	:= -O3
+else
+  SABERMOD_KERNEL_FLAGS := -O2
+endif
+
+# Extra flags
+ifdef SABERMOD_KERNEL_FLAGS
+  ifdef EXTRA_SABERMOD_GCC_VECTORIZE
+    SABERMOD_KERNEL_FLAGS += $(EXTRA_SABERMOD_GCC_VECTORIZE)
+  endif
+  ifdef EXTRA_SABERMOD_GCC
+    SABERMOD_KERNEL_FLAGS += $(EXTRA_SABERMOD_GCC)
+  endif
+else
+  ifdef EXTRA_SABERMOD_GCC_VECTORIZE
+    SABERMOD_KERNEL_FLAGS := $(EXTRA_SABERMOD_GCC_VECTORIZE)
+  endif
+  ifdef EXTRA_SABERMOD_GCC
+    SABERMOD_KERNEL_FLAGS := $(EXTRA_SABERMOD_GCC)
+  endif
+endif
+
+ifdef SABERMOD_KERNEL_FLAGS
+  ifdef kernel_arch_variant_cflags
+    SABERMOD_KERNEL_FLAGS += $(kernel_arch_variant_cflags)
+  endif
+else
+  ifdef kernel_arch_variant_cflags
+    SABERMOD_KERNEL_FLAGS := $(kernel_arch_variant_cflags)
+  endif
+endif
+
+ifneq (1,$(words $(DISABLE_SANITIZE_LEAK)))
+
+  # Memory leak detector sanitizer
+  ifdef SABERMOD_KERNEL_FLAGS
+    SABERMOD_KERNEL_FLAGS += -fsanitize=leak
+  else
+    SABERMOD_KERNEL_FLAGS := -fsanitize=leak
+  endif
+endif
+
+ifdef SABERMOD_KERNEL_FLAGS
+  ifdef GRAPHITE_KERNEL_FLAGS
+    SABERMOD_KERNEL_FLAGS += $(GRAPHITE_KERNEL_FLAGS)
+  endif
+else
+  ifdef GRAPHITE_KERNEL_FLAGS
+    SABERMOD_KERNEL_FLAGS := $(GRAPHITE_KERNEL_FLAGS)
+  endif
+endif
+
+# Add everything to CC at the end
+ifdef SABERMOD_KERNEL_FLAGS
+  CC += $(SABERMOD_KERNEL_FLAGS) -marm
+endif
+# end The SaberMod Project additions
+
+CPP = $(CC) -E
 
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE    := \
@@ -570,11 +654,32 @@ endif # $(dot-config)
 # Defaults to vmlinux, but the arch makefile usually adds further targets
 all: vmlinux
 
-ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
-else
-KBUILD_CFLAGS	+= -O2
+# begin The SaberMod Project additions
+
+# Copyright (C) 2015 The SaberMod Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Handle kernel CC flags by importing vendor/sm strings
+ifneq ($(strip $(LOCAL_O3)),true)
+  ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+    KBUILD_CFLAGS += -Os $(call cc-disable-warning,maybe-uninitialized,)
+  else
+    KBUILD_CFLAGS += -O2
+  endif
 endif
+# end The SaberMod Project additions
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
 
