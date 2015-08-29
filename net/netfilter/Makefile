@@ -149,7 +149,7 @@ obj-$(CONFIG_IP_SET) += ipset/
 obj-$(CONFIG_IP_VS) += ipvs/
 
 ifdef SM_KERNEL_NAME
-  ifneq ($(filter 5.1% 6.0%,$(SM_KERNEL_NAME)),)
+  ifneq ($(filter 5.1% 5.2% 6.0%,$(SM_KERNEL_NAME)),)
     CFLAGS_nf_conntrack_core.o := \
       -fno-graphite \
       -fno-graphite-identity \
